@@ -10,7 +10,7 @@ export async function connectDB() {
   if (mongoose.connection.readyState >= 1) {
     return;
   }
-  await mongoose.connect(MONGODB_URI);
+  await mongoose.connect(MONGODB_URI!);
 
   console.log("MongoDB connected");
 }
