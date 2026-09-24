@@ -37,6 +37,8 @@ export default function LoginPage() {
         return;
       }
 
+      localStorage.setItem("isLoggedIn", "true");
+
       router.push("/dashboard");
     } catch (error) {
       console.error(error);

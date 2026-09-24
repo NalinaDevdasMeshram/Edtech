@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 type Transaction = {
   id: string;
   title: string;
@@ -26,11 +27,18 @@ type DashboardData = {
 };
 
 export default function DashboardPage() {
+  const router = useRouter();
+
   const [data, setData] = useState<DashboardData | null>(null);
 
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState("");
+
+  const handleLogout = () => {
+    localStorage.removeItem("isLoggedIn");
+    router.push("/login");
+  };
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -80,12 +88,20 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-gray-100 p-6 md:p-10">
       <div className="mx-auto max-w-7xl">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">SmartSpend Dashboard</h1>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">SmartSpend Dashboard</h1>
 
-          <p className="mt-1 text-gray-500">
-            Understand your money. Make smarter decisions.
-          </p>
+            <p className="mt-1 text-gray-500">
+              Understand your money. Make smarter decisions.
+            </p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="rounded-lg bg-red-600 px-5 py-3 font-medium text-white hover:bg-red-700"
+          >
+            Logout
+          </button>
         </div>
 
         {/* Summary Cards */}
@@ -229,7 +245,7 @@ export default function DashboardPage() {
 
           <div className="flex flex-wrap gap-4">
             <Link
-              href="/transactions"
+              href="/transactions/new"
               className="rounded-xl bg-black px-5 py-3 font-medium text-white"
             >
               + Add Transaction
