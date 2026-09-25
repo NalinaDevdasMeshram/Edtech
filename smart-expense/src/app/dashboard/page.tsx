@@ -74,6 +74,17 @@ export default function DashboardPage() {
     };
     fetchDashboard();
   }, []);
+  useEffect(() => {
+    const handleTransactionUpdate = () => {
+      fetchDashboard();
+    };
+
+    window.addEventListener("transactionUpdated", handleTransactionUpdate);
+
+    return () => {
+      window.removeEventListener("transactionUpdated", handleTransactionUpdate);
+    };
+  }, []);
 
   if (loading) {
     return (

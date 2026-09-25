@@ -75,12 +75,24 @@ export default function TransactionsPage() {
         method: "DELETE",
       });
 
-      const result = await response.json();
+      const text = await response.text();
+
+      let result;
+
+      try {
+        result = JSON.parse(text);
+      } catch {
+        console.error("Delete API returned non-JSON:", text);
+        alert("Delete failed. Server returned an invalid response.");
+        return;
+      }
 
       if (!response.ok) {
         alert(result.message || "Delete failed");
         return;
       }
+
+      window.dispatchEvent(new Event("transactionUpdated"));
 
       setTransactions((previous) =>
         previous.filter((transaction) => transaction._id !== id),
@@ -259,7 +271,7 @@ export default function TransactionsPage() {
               </select>
             </div>
 
-            {/* Category */}
+            {/*Category*/}
 
             <div>
               <label

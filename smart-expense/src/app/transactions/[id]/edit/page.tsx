@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-
+import { expenseCategories, incomeCategories } from "@/src/lib/categories";
 type Transaction = {
   _id: string;
   title: string;
@@ -123,7 +123,7 @@ export default function EditTransactionPage() {
         setError(result.message || "Failed to update transaction");
         return;
       }
-
+      window.dispatchEvent(new Event("transactionUpdated"));
       router.push("/transactions");
       router.refresh();
     } catch (error) {
@@ -224,14 +224,25 @@ export default function EditTransactionPage() {
             <div>
               <label className="mb-2 block text-sm font-medium">Category</label>
 
-              <input
-                type="text"
+              <select
+                id="category"
                 name="category"
                 value={formData.category}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border p-3 outline-none focus:ring-2"
-              />
+                className="w-full rounded-lg border p-3"
+              >
+                <option value="">Select Category</option>
+
+                {(formData.type === "expense"
+                  ? expenseCategories
+                  : incomeCategories
+                ).map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Date */}

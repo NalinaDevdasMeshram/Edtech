@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { expenseCategories, incomeCategories } from "@/src/lib/categories";
 import Link from "next/link";
 
 export default function NewTransactionPage() {
@@ -56,6 +57,7 @@ export default function NewTransactionPage() {
         return;
       }
 
+      window.dispatchEvent(new Event("transactionUpdated"));
       router.push("/transactions");
     } catch (error) {
       console.error(error);
@@ -150,15 +152,25 @@ export default function NewTransactionPage() {
                 Category
               </label>
 
-              <input
+              <select
                 id="category"
                 name="category"
                 value={formData.category}
                 onChange={handleChange}
-                placeholder="e.g. Food"
                 required
                 className="w-full rounded-lg border p-3"
-              />
+              >
+                <option value="">Select Category</option>
+
+                {(formData.type === "expense"
+                  ? expenseCategories
+                  : incomeCategories
+                ).map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Date */}

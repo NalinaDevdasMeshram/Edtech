@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { expenseCategories } from "@/src/lib/categories";
 
 type Budget = {
   _id: string;
@@ -12,7 +13,6 @@ type Budget = {
 
 export default function BudgetsPage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
-
   const [showForm, setShowForm] = useState(false);
   const [category, setCategory] = useState("");
   const [limit, setLimit] = useState("");
@@ -23,28 +23,48 @@ export default function BudgetsPage() {
   );
 
   const totalSpent = budgets.reduce((total, budget) => total + budget.spent, 0);
+
   const remaining = totalBudget - totalSpent;
 
-  useEffect(() => {
-    const fetchBudgets = async () => {
-      try {
-        const response = await fetch("/api/budgets");
+  // Fetch budgets
+  const fetchBudgets = async () => {
+    try {
+      const response = await fetch("/api/budgets", {
+        cache: "no-store",
+      });
 
-        const result = await response.json();
+      const result = await response.json();
 
-        if (!response.ok) {
-          console.error(result.message);
-          return;
-        }
-
-        setBudgets(result.data || []);
-      } catch (error) {
-        console.error("Failed to load budgets:", error);
+      if (!response.ok) {
+        console.error(result.message);
+        return;
       }
-    };
 
+      setBudgets(result.data || []);
+    } catch (error) {
+      console.error("Failed to load budgets:", error);
+    }
+  };
+
+  // Load budgets when page opens
+  useEffect(() => {
     fetchBudgets();
   }, []);
+
+  // Refresh budgets when transaction changes
+  useEffect(() => {
+    const handleTransactionUpdate = () => {
+      fetchBudgets();
+    };
+
+    window.addEventListener("transactionUpdated", handleTransactionUpdate);
+
+    return () => {
+      window.removeEventListener("transactionUpdated", handleTransactionUpdate);
+    };
+  }, []);
+
+  // Add budget
   const handleAddBudget = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -70,9 +90,6 @@ export default function BudgetsPage() {
 
       const responseText = await response.text();
 
-      console.log("Budget API status:", response.status);
-      console.log("Budget API response:", responseText);
-
       let result;
 
       try {
@@ -88,13 +105,7 @@ export default function BudgetsPage() {
         return;
       }
 
-      setBudgets((prev) => [
-        ...prev,
-        {
-          ...result.data,
-          spent: 0,
-        },
-      ]);
+      await fetchBudgets();
 
       setCategory("");
       setLimit("");
@@ -107,13 +118,30 @@ export default function BudgetsPage() {
     }
   };
 
+  // Delete budget
   const handleDelete = async (id: string) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this budget?",
+    );
+
+    if (!confirmed) return;
+
     try {
       const response = await fetch(`/api/budgets/${id}`, {
         method: "DELETE",
       });
 
-      const result = await response.json();
+      const responseText = await response.text();
+
+      let result;
+
+      try {
+        result = responseText ? JSON.parse(responseText) : {};
+      } catch (error) {
+        console.error("Delete budget returned non-JSON:", responseText);
+        alert("Server returned an invalid response.");
+        return;
+      }
 
       if (!response.ok) {
         alert(result.message || "Failed to delete budget");
@@ -121,6 +149,8 @@ export default function BudgetsPage() {
       }
 
       setBudgets((prev) => prev.filter((budget) => budget._id !== id));
+
+      alert("Budget deleted successfully");
     } catch (error) {
       console.error("Delete budget error:", error);
       alert("Something went wrong");
@@ -129,187 +159,219 @@ export default function BudgetsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Budgets</h1>
 
             <p className="mt-1 text-gray-500">
-              Set and manage your monthly spending limits.
+              Manage your monthly spending limits
             </p>
           </div>
 
           <button
             onClick={() => setShowForm(!showForm)}
-            className="rounded-lg bg-black px-5 py-3 text-sm font-medium text-white hover:bg-gray-800"
+            className="rounded-lg bg-black px-5 py-3 font-medium text-white hover:bg-gray-800"
           >
-            + Add Budget
+            {showForm ? "Cancel" : "+ Add Budget"}
           </button>
-        </div>
-
-        {/* Summary Cards */}
-        <div className="mb-8 grid gap-5 md:grid-cols-3">
-          <div className="rounded-xl border bg-white p-5 shadow-sm">
-            <p className="text-sm text-gray-500">Total Budget</p>
-
-            <h2 className="mt-2 text-2xl font-bold">
-              ₹{totalBudget.toLocaleString()}
-            </h2>
-          </div>
-
-          <div className="rounded-xl border bg-white p-5 shadow-sm">
-            <p className="text-sm text-gray-500">Total Spent</p>
-
-            <h2 className="mt-2 text-2xl font-bold text-red-600">
-              ₹{totalSpent.toLocaleString()}
-            </h2>
-          </div>
-
-          <div className="rounded-xl border bg-white p-5 shadow-sm">
-            <p className="text-sm text-gray-500">Remaining</p>
-
-            <h2 className="mt-2 text-2xl font-bold text-green-600">
-              ₹{remaining.toLocaleString()}
-            </h2>
-          </div>
         </div>
 
         {/* Add Budget Form */}
         {showForm && (
-          <div className="mb-8 rounded-xl border bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-semibold">Add New Budget</h2>
+          <div className="mb-8 rounded-xl bg-white p-6 shadow-sm">
+            <h2 className="mb-5 text-xl font-semibold text-gray-900">
+              Add New Budget
+            </h2>
 
             <form
               onSubmit={handleAddBudget}
-              className="grid gap-5 md:grid-cols-3"
+              className="grid gap-5 md:grid-cols-2"
             >
+              {/* Category */}
               <div>
-                <label className="mb-2 block text-sm font-medium">
+                <label className="mb-2 block text-sm font-medium text-gray-700">
                   Category
                 </label>
 
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-lg border px-4 py-3 outline-none focus:ring-2"
+                  className="w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-black"
                 >
-                  <option value="">Select category</option>
-                  <option value="Food">Food</option>
-                  <option value="Transport">Transport</option>
-                  <option value="Shopping">Shopping</option>
-                  <option value="Entertainment">Entertainment</option>
-                  <option value="Bills">Bills</option>
-                  <option value="Health">Health</option>
-                  <option value="Education">Education</option>
-                  <option value="Other">Other</option>
+                  <option value="">Select Category</option>
+
+                  {expenseCategories.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
                 </select>
               </div>
 
+              {/* Limit */}
               <div>
-                <label className="mb-2 block text-sm font-medium">
-                  Budget Limit
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Monthly Budget Limit
                 </label>
 
                 <input
                   type="number"
+                  min="1"
                   value={limit}
                   onChange={(e) => setLimit(e.target.value)}
-                  placeholder="Enter amount"
-                  className="w-full rounded-lg border px-4 py-3 outline-none focus:ring-2"
+                  placeholder="Enter budget amount"
+                  className="w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-black"
                 />
               </div>
 
-              <div className="flex items-end">
+              {/* Submit */}
+              <div className="md:col-span-2">
                 <button
                   type="submit"
-                  className="w-full rounded-lg bg-black px-4 py-3 font-medium text-white hover:bg-gray-800"
+                  className="rounded-lg bg-black px-6 py-3 font-medium text-white hover:bg-gray-800"
                 >
-                  Save Budget
+                  Create Budget
                 </button>
               </div>
             </form>
           </div>
         )}
 
+        {/* Summary Cards */}
+        <div className="mb-8 grid gap-5 md:grid-cols-3">
+          {/* Total Budget */}
+          <div className="rounded-xl bg-white p-6 shadow-sm">
+            <p className="text-sm text-gray-500">Total Budget</p>
+
+            <h2 className="mt-2 text-2xl font-bold text-gray-900">
+              ₹{totalBudget.toLocaleString("en-IN")}
+            </h2>
+          </div>
+
+          {/* Total Spent */}
+          <div className="rounded-xl bg-white p-6 shadow-sm">
+            <p className="text-sm text-gray-500">Total Spent</p>
+
+            <h2 className="mt-2 text-2xl font-bold text-red-600">
+              ₹{totalSpent.toLocaleString("en-IN")}
+            </h2>
+          </div>
+
+          {/* Remaining */}
+          <div className="rounded-xl bg-white p-6 shadow-sm">
+            <p className="text-sm text-gray-500">Remaining</p>
+
+            <h2
+              className={`mt-2 text-2xl font-bold ${
+                remaining >= 0 ? "text-green-600" : "text-red-600"
+              }`}
+            >
+              ₹{remaining.toLocaleString("en-IN")}
+            </h2>
+          </div>
+        </div>
+
         {/* Budget List */}
-        <div className="rounded-xl border bg-white shadow-sm">
-          <div className="border-b p-6">
-            <h2 className="text-xl font-semibold">Monthly Budgets</h2>
+        <div className="rounded-xl bg-white p-6 shadow-sm">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-900">
+              Monthly Budgets
+            </h2>
 
             <p className="mt-1 text-sm text-gray-500">
-              Track your spending against each category.
+              Track your spending against each category
             </p>
           </div>
 
-          <div className="divide-y">
-            {budgets.map((budget) => {
-              const percentage =
-                budget.limit > 0 ? (budget.spent / budget.limit) * 100 : 0;
+          {budgets.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-gray-300 p-10 text-center">
+              <p className="text-gray-500">No budgets created yet.</p>
 
-              const progress = Math.min(percentage, 100);
+              <button
+                onClick={() => setShowForm(true)}
+                className="mt-3 font-medium text-black underline"
+              >
+                Create your first budget
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {budgets.map((budget) => {
+                const percentage =
+                  budget.limit > 0 ? (budget.spent / budget.limit) * 100 : 0;
 
-              return (
-                <div key={budget._id} className="p-6">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-gray-900">
-                        {budget.category}
-                      </h3>
+                const progress = Math.min(percentage, 100);
 
-                      <p className="text-sm text-gray-500">
-                        ₹{budget.spent.toLocaleString()} spent of ₹
-                        {budget.limit.toLocaleString()}
-                      </p>
-                    </div>
+                return (
+                  <div
+                    key={budget._id}
+                    className="rounded-xl border border-gray-200 p-5"
+                  >
+                    {/* Budget Header */}
+                    <div className="mb-3 flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold text-gray-900">
+                          {budget.category}
+                        </h3>
 
-                    <div className="text-right">
-                      <p className="font-semibold">{Math.round(percentage)}%</p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          ₹{budget.spent.toLocaleString("en-IN")} spent of ₹
+                          {budget.limit.toLocaleString("en-IN")}
+                        </p>
+                      </div>
 
                       <button
                         onClick={() => handleDelete(budget._id)}
-                        className="mt-1 text-sm text-red-600 hover:underline"
+                        className="rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
                       >
                         Delete
                       </button>
                     </div>
-                  </div>
 
-                  {/* Progress Bar */}
-                  <div className="h-3 w-full overflow-hidden rounded-full bg-gray-200">
-                    <div
-                      className={`h-full rounded-full ${
-                        percentage >= 100
-                          ? "bg-red-500"
-                          : percentage >= 80
-                            ? "bg-yellow-500"
-                            : "bg-green-500"
-                      }`}
-                      style={{
-                        width: `${progress}%`,
-                      }}
-                    />
-                  </div>
+                    {/* Progress Bar */}
+                    <div className="h-3 w-full overflow-hidden rounded-full bg-gray-200">
+                      <div
+                        className={`h-full rounded-full ${
+                          percentage >= 100
+                            ? "bg-red-500"
+                            : percentage >= 80
+                              ? "bg-yellow-500"
+                              : "bg-green-500"
+                        }`}
+                        style={{
+                          width: `${progress}%`,
+                        }}
+                      />
+                    </div>
 
-                  <div className="mt-2 flex justify-between text-xs text-gray-500">
-                    <span>
-                      Remaining: ₹
-                      {Math.max(
-                        budget.limit - budget.spent,
-                        0,
-                      ).toLocaleString()}
-                    </span>
-
-                    {percentage >= 100 && (
-                      <span className="font-medium text-red-600">
-                        Budget exceeded
+                    {/* Budget Details */}
+                    <div className="mt-3 flex items-center justify-between text-sm">
+                      <span className="text-gray-500">
+                        {Math.round(percentage)}% used
                       </span>
-                    )}
+
+                      <span
+                        className={
+                          budget.limit - budget.spent >= 0
+                            ? "font-medium text-green-600"
+                            : "font-medium text-red-600"
+                        }
+                      >
+                        ₹
+                        {Math.max(
+                          budget.limit - budget.spent,
+                          0,
+                        ).toLocaleString("en-IN")}{" "}
+                        remaining
+                      </span>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
