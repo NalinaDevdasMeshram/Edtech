@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
 type Transaction = {
   id: string;
   title: string;
@@ -17,6 +18,15 @@ type Category = {
   amount: number;
 };
 
+type BudgetOverview = {
+  id: string;
+  category: string;
+  limit: number;
+  spent: number;
+  remaining: number;
+  percentage: number;
+};
+
 type DashboardData = {
   totalIncome: number;
   totalExpenses: number;
@@ -24,13 +34,12 @@ type DashboardData = {
   savingsRate: number;
   categoryBreakdown: Category[];
   recentTransactions: Transaction[];
+  budgetOverview: BudgetOverview[];
 };
 
 export default function DashboardPage() {
   const router = useRouter();
-
   const [data, setData] = useState<DashboardData | null>(null);
-
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState("");
@@ -43,15 +52,18 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const response = await fetch("/api/dashboard");
+        const response = await fetch("/api/dashboard", {
+          cache: "no-store",
+        });
+        console.log("Response from data", response);
 
         const result = await response.json();
+        console.log("Result from data", result);
 
         if (!response.ok) {
           setError(result.message || "Failed to load dashboard");
           return;
         }
-
         setData(result.data);
       } catch (error) {
         console.error(error);
@@ -60,7 +72,6 @@ export default function DashboardPage() {
         setLoading(false);
       }
     };
-
     fetchDashboard();
   }, []);
 
@@ -238,7 +249,68 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+        {/* Budget Overview */}
+        <div className="mt-8 rounded-2xl bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold">Budget Overview</h2>
 
+            <Link href="/budgets" className="text-sm font-medium underline">
+              Manage Budgets
+            </Link>
+          </div>
+
+          {data.budgetOverview.length === 0 ? (
+            <p className="mt-6 text-gray-500">
+              No budgets available for this month.
+            </p>
+          ) : (
+            <div className="mt-6 space-y-6">
+              {data.budgetOverview.map((budget) => (
+                <div key={budget.id}>
+                  {/* Category + Amount */}
+                  <div className="mb-2 flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{budget.category}</p>
+
+                      <p className="text-sm text-gray-500">
+                        ₹{budget.spent.toLocaleString("en-IN")} spent of ₹
+                        {budget.limit.toLocaleString("en-IN")}
+                      </p>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="font-semibold">
+                        ₹{budget.remaining.toLocaleString("en-IN")}
+                      </p>
+
+                      <p className="text-xs text-gray-500">remaining</p>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="h-3 overflow-hidden rounded-full bg-gray-200">
+                    <div
+                      className="h-full rounded-full bg-black"
+                      style={{
+                        width: `${Math.min(budget.percentage, 100)}%`,
+                      }}
+                    />
+                  </div>
+
+                  {/* Percentage */}
+                  <div className="mt-1 flex justify-between text-xs text-gray-500">
+                    <span>{budget.percentage}% used</span>
+
+                    <span>
+                      ₹{budget.spent.toLocaleString("en-IN")} / ₹
+                      {budget.limit.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         {/* Quick Actions */}
         <div className="mt-8">
           <h2 className="mb-4 text-xl font-bold">Quick Actions</h2>

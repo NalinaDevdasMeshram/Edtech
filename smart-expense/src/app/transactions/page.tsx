@@ -159,7 +159,7 @@ export default function TransactionsPage() {
   );
 
   // --------------------------------
-  // Categories
+  //  Categories
   // --------------------------------
 
   const categories = Array.from(
@@ -167,7 +167,7 @@ export default function TransactionsPage() {
   );
 
   // --------------------------------
-  // Loading
+  //  Loading
   // --------------------------------
 
   if (loading) {

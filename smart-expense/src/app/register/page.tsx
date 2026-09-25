@@ -11,7 +11,6 @@ export default function RegisterPage() {
     email: "",
     password: "",
   });
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");

@@ -1,38 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Budget = {
-  id: number;
+  _id: string;
   category: string;
   limit: number;
+  month: string;
   spent: number;
 };
 
 export default function BudgetsPage() {
-  const [budgets, setBudgets] = useState<Budget[]>([
-    {
-      id: 1,
-      category: "Food",
-      limit: 10000,
-      spent: 6500,
-    },
-    {
-      id: 2,
-      category: "Transport",
-      limit: 5000,
-      spent: 3200,
-    },
-    {
-      id: 3,
-      category: "Shopping",
-      limit: 8000,
-      spent: 7200,
-    },
-  ]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
 
   const [showForm, setShowForm] = useState(false);
-
   const [category, setCategory] = useState("");
   const [limit, setLimit] = useState("");
 
@@ -42,30 +23,108 @@ export default function BudgetsPage() {
   );
 
   const totalSpent = budgets.reduce((total, budget) => total + budget.spent, 0);
-
   const remaining = totalBudget - totalSpent;
 
-  const handleAddBudget = (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    const fetchBudgets = async () => {
+      try {
+        const response = await fetch("/api/budgets");
 
-    if (!category || !limit) return;
+        const result = await response.json();
 
-    const newBudget: Budget = {
-      id: Date.now(),
-      category,
-      limit: Number(limit),
-      spent: 0,
+        if (!response.ok) {
+          console.error(result.message);
+          return;
+        }
+
+        setBudgets(result.data || []);
+      } catch (error) {
+        console.error("Failed to load budgets:", error);
+      }
     };
 
-    setBudgets((prev) => [...prev, newBudget]);
+    fetchBudgets();
+  }, []);
+  const handleAddBudget = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-    setCategory("");
-    setLimit("");
-    setShowForm(false);
+    if (!category || !limit) {
+      alert("Please select a category and enter a budget limit.");
+      return;
+    }
+
+    try {
+      const month = new Date().toISOString().slice(0, 7);
+
+      const response = await fetch("/api/budgets", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          category,
+          limit: Number(limit),
+          month,
+        }),
+      });
+
+      const responseText = await response.text();
+
+      console.log("Budget API status:", response.status);
+      console.log("Budget API response:", responseText);
+
+      let result;
+
+      try {
+        result = responseText ? JSON.parse(responseText) : {};
+      } catch (error) {
+        console.error("Invalid JSON response:", error);
+        alert("Server returned an invalid response.");
+        return;
+      }
+
+      if (!response.ok) {
+        alert(result.message || "Failed to create budget");
+        return;
+      }
+
+      setBudgets((prev) => [
+        ...prev,
+        {
+          ...result.data,
+          spent: 0,
+        },
+      ]);
+
+      setCategory("");
+      setLimit("");
+      setShowForm(false);
+
+      alert("Budget created successfully");
+    } catch (error) {
+      console.error("Add budget error:", error);
+      alert("Something went wrong");
+    }
   };
 
-  const handleDelete = (id: number) => {
-    setBudgets((prev) => prev.filter((budget) => budget.id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      const response = await fetch(`/api/budgets/${id}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        alert(result.message || "Failed to delete budget");
+        return;
+      }
+
+      setBudgets((prev) => prev.filter((budget) => budget._id !== id));
+    } catch (error) {
+      console.error("Delete budget error:", error);
+      alert("Something went wrong");
+    }
   };
 
   return (
@@ -191,7 +250,7 @@ export default function BudgetsPage() {
               const progress = Math.min(percentage, 100);
 
               return (
-                <div key={budget.id} className="p-6">
+                <div key={budget._id} className="p-6">
                   <div className="mb-3 flex items-center justify-between">
                     <div>
                       <h3 className="font-semibold text-gray-900">
@@ -208,7 +267,7 @@ export default function BudgetsPage() {
                       <p className="font-semibold">{Math.round(percentage)}%</p>
 
                       <button
-                        onClick={() => handleDelete(budget.id)}
+                        onClick={() => handleDelete(budget._id)}
                         className="mt-1 text-sm text-red-600 hover:underline"
                       >
                         Delete

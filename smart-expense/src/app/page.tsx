@@ -5,7 +5,9 @@ export default function Home() {
     <main className="min-h-screen bg-slate-950 text-white">
       <nav className="border-b border-slate-800">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-          <h1 className="text-2xl font-bold bg-red-500">SmartSpend AI</h1>
+          <h1 className="text-2xl font-bold bg-orange-500 rounded-2xl px-2 py-1.5 text-white hover:bg-orange-400">
+            SmartSpend AI
+          </h1>
 
           <div className="flex gap-4">
             <Link
