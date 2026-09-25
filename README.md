@@ -5,7 +5,7 @@ The application allows users to manage their income and expenses, monitor their 
 
 ## screenshot
 
-![Smart Expense Dashboard](public/assest/image.png)
+![Smart Expense Dashboard](/Edtech/smart-expense/public/assest/image.png)
 
 ## Features
 
